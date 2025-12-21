@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>پنل مدیریت نظرسنجی‌ها</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" />
+  <style>
+    body {
+      font-family: 'Vazirmatn', sans-serif;
+      background-color: #f4f6f9;
+      padding: 2rem;
+    }
+    h3 {
+      margin-bottom: 2rem;
+      text-align: center;
+      color: #333;
+    }
+    .form-control, .btn {
+      border-radius: 10px;
+    }
+    table th, table td {
+      vertical-align: middle !important;
+    }
+    .btn-sm {
+      padding: 0.25rem 0.5rem;
+    }
+    .chart-small {
+      max-width: 80px;
+      max-height: 80px;
+    }
+    .edit-input {
+      width: 100%;
+      border: none;
+      background-color: transparent;
+      padding: 0.25rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      color: #333;
+    }
+    .edit-input:focus {
+      outline: 2px solid #0d6efd;
+      background-color: #fff;
+    }
+    .actions-btns > button {
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- فرم ورود -->
+  <div class="container" id="loginContainer" style="max-width: 400px; margin-top: 80px; display: none;">
+    <h3 class="text-center mb-4">ورود ادمین</h3>
+    <form id="adminLoginForm">
+      <div class="mb-3">
+        <label for="username" class="form-label">نام کاربری:</label>
+        <input type="text" id="username" class="form-control" required />
+      </div>
+      <div class="mb-3">
+        <label for="password" class="form-label">رمز عبور:</label>
+        <input type="password" id="password" class="form-control" required />
+      </div>
+      <button type="submit" class="btn btn-primary w-100">ورود</button>
+    </form>
+  </div>
+
+  <!-- پنل مدیریت -->
+  <div class="container" id="panelContainer" style="display: none;">
+    <h3>پنل مدیریت نظرسنجی‌ها</h3>
+
+    <form id="newSurveyForm" class="mb-5">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-4">
+          <label for="title" class="form-label">عنوان نظرسنجی:</label>
+          <input type="text" id="title" class="form-control" required />
+        </div>
+        <div class="col-md-4">
+          <label for="description" class="form-label">توضیحات:</label>
+          <input type="text" id="description" class="form-control" required />
+        </div>
+        <div class="col-md-3">
+          <label for="endDate" class="form-label">تاریخ پایان نظرسنجی:</label>
+          <input type="date" id="endDate" class="form-control" required />
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary w-100">افزودن</button>
+        </div>
+      </div>
+    </form>
+
+    <table class="table table-bordered text-center align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>عنوان</th>
+          <th>توضیحات</th>
+          <th>تاریخ پایان</th>
+          <th>نمودار</th>
+          <th>وضعیت</th>
+          <th>عملیات</th>
+        </tr>
+      </thead>
+      <tbody id="surveyTableBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const loginContainer = document.getElementById("loginContainer");
+    const panelContainer = document.getElementById("panelContainer");
+
+    if (localStorage.getItem("adminLoggedIn") === "true") {
+      loginContainer.style.display = "none";
+      panelContainer.style.display = "block";
+    } else {
+      loginContainer.style.display = "block";
+      panelContainer.style.display = "none";
+    }
+
+    document.getElementById("adminLoginForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+if (username === "admin" && password === "1234") {
+        localStorage.setItem("adminLoggedIn", "true");
+        location.reload();
+      } else {
+        alert("نام کاربری یا رمز عبور اشتباه است.");
+      }
+    });
+
+    const surveyListKey = "surveyList";
+    const surveyDataKey = "surveys";
+
+    function loadSurveyList() {
+      return JSON.parse(localStorage.getItem(surveyListKey)) || [];
+    }
+
+    function saveSurveyList(list) {
+      localStorage.setItem(surveyListKey, JSON.stringify(list));
+    }
+
+    function loadSurveyData() {
+      return JSON.parse(localStorage.getItem(surveyDataKey)) || {};
+    }
+
+    function saveSurveyData(data) {
+      localStorage.setItem(surveyDataKey, JSON.stringify(data));
+    }
+
+    function formatDateToPersian(dateStr) {
+      if (!dateStr) return "";
+      const date = new Date(dateStr + 'T00:00:00');
+      return date.toLocaleDateString('fa-IR');
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("surveyTableBody");
+      tbody.innerHTML = "";
+      const list = loadSurveyList();
+      const dataMap = loadSurveyData();
+
+      list.forEach((survey, index) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><input type="text" class="edit-input" value="${survey.title}" data-field="title" data-index="${index}" /></td>
+          <td><input type="text" class="edit-input" value="${survey.description}" data-field="description" data-index="${index}" /></td>
+          <td><input type="date" class="edit-input" value="${survey.endDate || ''}" data-field="endDate" data-index="${index}" /></td>
+          <td><canvas id="chart-${index}" class="chart-small"></canvas></td>
+          <td>${survey.status === "active" ? '<span class="badge bg-success">فعال</span>' : '<span class="badge bg-secondary">پایان یافته</span>'}</td>
+          <td class="actions-btns">
+            <button class="btn btn-sm btn-warning" onclick="toggleStatus(${index})" title="تغییر وضعیت"><i class="bi bi-arrow-repeat"></i> وضعیت</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSurvey(${index})" title="حذف"><i class="bi bi-trash"></i> حذف</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        const ctx = document.getElementById(`chart-${index}`).getContext("2d");
+        const chartData = dataMap[survey.title] || { "عالی": 0, "متوسط": 0, "ضعیف": 0 };
+
+        new Chart(ctx, {
+          type: "doughnut",
+          data: {
+            labels: ["عالی", "متوسط", "ضعیف"],
+            datasets: [{
+              data: [chartData["عالی"], chartData["متوسط"], chartData["ضعیف"]],
+              backgroundColor: ["#4caf50", "#ffc107", "#f44336"],
+              hoverOffset: 6
+            }]
+          },
+          options: {
+            responsive: false,
+            plugins: {
+              legend: { display: false }
+            },
+            cutout: "70%"
+          }
+        });
+      });
+
+      document.querySelectorAll(".edit-input").forEach(input => {
+        input.onchange = (e) => {
+          const index = e.target.dataset.index;
+          const field = e.target.dataset.field;
+          const value = e.target.value.trim();
+          if (!value) {
+            alert("فیلد نمی‌تواند خالی باشد");
+            renderTable();
+            return;
+          }
+          updateSurvey(index, field, value);
+        };
+      });
+    }
+
+    function toggleStatus(index) {
+      const list = loadSurveyList();
+      list[index].status = list[index].status === "active" ? "ended" : "active";
+      saveSurveyList(list);
+      renderTable();
+    }
+
+    function deleteSurvey(index) {
+      if (!confirm("آیا مطمئن هستید که می‌خواهید این نظرسنجی را حذف کنید؟")) return;
+      const list = loadSurveyList();
+      list.splice(index, 1);
+      saveSurveyList(list);
+      renderTable();
+    }
+
+    function updateSurvey(index, field, value) {
+      const list = loadSurveyList();
+      list[index][field] = value;
+      saveSurveyList(list);
+      renderTable();
+    }
+
+document.getElementById("newSurveyForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const titleInput = document.getElementById("title");
+      const descInput = document.getElementById("description");
+      const endDateInput = document.getElementById("endDate");
+
+      const title = titleInput.value.trim();
+      const description = descInput.value.trim();
+      const endDate = endDateInput.value;
+
+      if (!title || !description || !endDate) {
+        alert("لطفاً همه فیلدها را پر کنید.");
+        return;
+      }
+
+      const list = loadSurveyList();
+      if (list.some(s => s.title === title)) {
+        alert("عنوان نظرسنجی تکراری است.");
+        return;
+      }
+
+      list.push({ title, description, status: "active", endDate });
+      saveSurveyList(list);
+
+      titleInput.value = "";
+      descInput.value = "";
+      endDateInput.value = "";
+      renderTable();
+    });
+
+    window.onload = () => {
+      if (localStorage.getItem("adminLoggedIn") === "true") {
+        renderTable();
+      }
+    };
+  </script>
+</body>
+</html>
