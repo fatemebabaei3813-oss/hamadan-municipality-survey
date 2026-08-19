@@ -1,5 +1,5 @@
 # hamadan-municipality-survey
-# نظرسنجی شهری: ارزیابی عملکرد شهرداری همدان 🏙️
+# نظرسنجی شهری: ارزیابی عملکرد شهرداری همدان 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)  
 [![Open Source](https://img.shields.io/badge/Open%20Source-%E2%9D%A4-brightgreen)](https://github.com/your-username/hamadan-municipality-survey)
